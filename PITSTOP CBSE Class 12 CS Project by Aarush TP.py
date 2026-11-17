@@ -21,9 +21,9 @@ def create_db():
     CREATE TABLE CarInfo (
         car_id INT PRIMARY KEY,
         dealership_id INT NOT NULL,
-        make VARCHAR(15),
+        make VARCHAR(30),
         model VARCHAR(30),
-        car_name VARCHAR(50),
+        car_name VARCHAR(60),
         year INT,
         number_of_km INT,
         horsepower INT,
@@ -62,6 +62,7 @@ def add_dealership():
         print()
         dealership_id = int(input('Enter the dealership ID: '))
         location = input('Enter the location: ')
+        location = location.title()
         cur.execute("""
         INSERT INTO DealershipBranch VALUES (%s, %s, %s);""", (dealership_id, location, 0))
     db.commit()
@@ -74,6 +75,7 @@ def add_employees():
         print()
         emp_id = int(input('Enter the employee ID: '))
         emp_name = input('Enter the employee name: ')
+        emp_name = emp_name.title()
         dealership_id = int(input('Enter the dealership ID: '))
         number_of_cars_sold = int(input(f'Enter the number of cars sold by {emp_name.split()[0]}: '))
         cur.execute("""
@@ -89,7 +91,9 @@ def add_cars():
         car_id = int(input('Enter the car ID: '))
         dealership_id = int(input('Enter the dealership ID: '))
         make = input('Enter the make: ')
+        make = make.title()
         model = input('Enter the model: ')
+        model = model.title()
         car_name = make + ' ' + model
         year = int(input('Which year\'s model is the car? '))
         number_of_km = int(input('Enter the number of km travelled by the car: '))
@@ -109,27 +113,26 @@ print("Welcome to PITSTOP's Database System! Please follow the initialization st
 add_dealership()
 add_employees()
 add_cars()
-print('You may now choose your functions: ')
+print('You may now choose your functions.')
+print()
 
 print('MENU:')
 print('1.  Add new cars.')
 print('2.  Buy new car.')
 print('3.  Delete car by name.')
 print('4.  Update car specifications.')
-print('5.  Update customer history information.')
-print('6.  Display all cars bought by a specific customer.')
-print('7.  Display all cars meeting the specified budget.')
-print('8.  Display all cars in a specified dealership location.')
-print('9.  Display employees from each dealership with highest number of cars sold.')
-print('10. Display the most profitable car in each dealership.')
-print('11. Exit.')
+print('5.  Display all cars meeting the specified budget.')
+print('6.  Display all cars in a specified dealership location.')
+print('7.  Display employees from each dealership with highest number of cars sold.')
+print('8. Exit.')
 print()
 
 while True:
     ch = int(input('Enter your choice: '))
     print()
-    if ch == 1:
-        add_cars()
+
+    if ch == 1: add_cars()
+
     elif ch == 2:
         print()
         car_name = input('Enter the name of the car you want to buy: ')
@@ -174,6 +177,7 @@ while True:
             (dealership_id,))
             cur.execute('UPDATE EmployeeRecords SET number_of_cars_sold = number_of_cars_sold + 1 WHERE emp_id = %s;', (emp_id,))
             db.commit()
+
     elif ch == 3:
         print()
         car_name = input('Enter the name of the car you want to delete: ')
@@ -192,8 +196,7 @@ while True:
                 dealership_id = data[1]
                 cur.execute('SELECT car_id FROM CarInfo WHERE car_name = %s AND dealership_id = %s;', (car_name, dealership_id))
                 data = cur.fetchall()
-                if not data:
-                    print(f'{car_name} was not found at the {dealer} branch.')
+                if not data: print(f'{car_name} was not found at the {dealer} branch.')
                 else:
                     car_id = data[0][0]
                     cur.execute('DELETE FROM CarInfo WHERE car_id = %s;', (car_id, ))
@@ -201,24 +204,79 @@ while True:
                     db.commit()
 
     elif ch == 4:
-        pass
+        print()
+        print('Please note that only specifications like make, model, car_name, horsepower, and top_speed_kmh can be changed.')
+        car_name = input('Enter the name of the car whose specifications you want to update:')
+        car_name = car_name.title()
+        cur.execute('SELECT car_id FROM CarInfo WHERE car_name = %s;', (car_name,))
+        data = cur.fetchone()
+        if not data: print(f'{car_name} is not in Pitstop\'s garage.')
+        else:
+            car_id = data[0]
+            cur.execute('SELECT make, model, car_name, horsepower, top_speed_kmh FROM CarInfo WHERE car_id = %s;', (car_id,))
+            data = cur.fetchall()
+            print('Enter data in respective fields if required, else just press Enter...')
+            print()
+            make = input('Enter the new make: ')
+            if not make: make = data[0][0]
+            model = input('Enter the new model: ')
+            if not model: model = data[0][1]
+            car_name = make + ' ' + model
+            horsepower = input('Enter the new horsepower: ')
+            if not horsepower: horsepower = data[0][3]
+            else: horsepower = int(horsepower)
+            top_speed_kmh = input('Enter the new top speed in kmh: ')
+            if not top_speed_kmh: top_speed_kmh = data[0][4]
+            else: top_speed_kmh = int(top_speed_kmh)
+            cur.execute('UPDATE CarInfo SET make = %s, model = %s, car_name = %s, horsepower = %s, top_speed_kmh = %s WHERE car_id = %s;',
+            (make, model, car_name, horsepower, top_speed_kmh, car_id))
+            db.commit()
+
     elif ch == 5:
-        pass
+        print()
+        budget = int(input('Enter your budget in AED: '))
+        cur.execute('SELECT * FROM CarInfo WHERE price <= %s ORDER BY car_name DESC;', (budget,))
+        data = cur.fetchall()
+        if not data:
+            print('No cars met the specified budget. Sorry for the inconvenience.')
+        else:
+            print()
+            print('The cars meeting the specified budget are:')
+            for car in data: print(car)
+
     elif ch == 6:
-        pass
+        print()
+        loc = input('Enter location of dealership: ')
+        loc = loc.title()
+        cur.execute('SELECT dealership_id FROM DealershipBranch WHERE location = %s;', (loc,))
+        data = cur.fetchone()
+        if not data:
+            print(f'Pitstop does not have a branch at the location: {loc}')
+        else:
+            dealership_id = data[0]
+            cur.execute('SELECT * FROM CarInfo WHERE dealership_id = %s;', (dealership_id,))
+            print('The cars in the specified location are: ')
+            for car in cur.fetchall(): print(car)
+
     elif ch == 7:
-        pass
+        print()
+        cur.execute('''
+        SELECT dealership_id, MAX(number_of_cars_sold)
+        FROM EmployeeRecords
+        GROUP BY dealership_id
+        ORDER BY dealership_id;''')
+        data = cur.fetchall()
+        print('The employees with the most number of cars sold in their respective dealerships are: ')
+        for employee in data:
+            cur.execute('SELECT emp_id, emp_name, dealership_id, number_of_cars_sold FROM EmployeeRecords WHERE dealership_id = %s AND number_of_cars_sold = %s;', (employee[0], employee[1]))
+            for record in cur.fetchall(): print(record)
+
     elif ch == 8:
-        pass
-    elif ch == 9:
-        pass
-    elif ch == 10:
-        pass
-    elif ch == 11:
         print()
         print('Thank you for choosing PITSTOP! We hope to see you soon.')
         print('Exiting...')
         break
+
     else:
         print()
         print('Invalid choice, please try again...')
